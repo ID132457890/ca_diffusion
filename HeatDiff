@@ -1,0 +1,76 @@
+import numpy as N
+
+def initBar (m, n, hotSites, coldSites):
+    ambientBar = N.zeros((m, n))
+    ambientBar += 24.0
+    
+    for hotSite in hotSites:
+        ambientBar[hotSite[0]][hotSite[1]] = 50.0
+        
+    for coldSite in coldSites:
+        ambientBar[coldSite[0]][coldSite[1]] = 0.0
+    
+    return ambientBar
+    
+        
+def applyHotCold (bar, hotSites, coldSites):
+    newBar = bar
+    
+    for hotSite in hotSites:
+        newBar[hotSite[0]][hotSite[1]] = 50.0
+        
+    for coldSite in coldSites:
+        newBar[coldSite[0]][coldSite[1]] = 0.0
+    
+    return newBar
+    
+    
+def diffusion (diffusionRate, site, N, NE, E, SE, S ,SW, W, NW):
+    random = N.random.normal(0, 0.5)
+    return (1 - 8 * diffusionRate) * site + (1 + diffusionRate * random) * (N + NE + E + SE + S + SW + W + NW)
+    
+    
+def applyDiffusionExtended (diffusionRate, lat):
+    m = N.shape(lat)[0] - 2
+    n = N.shape(lat)[1] - 2
+    
+    newLat = N.zeros((m, n))
+    
+    for j in N.arange(2, n + 1):
+        for i in N.arange(2, m + 1):
+            site = lat[i][j]
+            N = lat[i - 1][j]
+            NE = lat[i - 1][j + 1]
+            E = lat[i][j + 1]
+            SE = lat[i + 1][j + 1]
+            S = lat[i + 1][j]
+            SW = lat[i + 1][j - 1]
+            W = lat[i][j - 1]
+            NW = lat[i - 1][j - 1]
+            newLat[i - 1][j - 1] = diffusion (diffusionRate, site, N, NE, E, SE, S ,SW, W, NW)
+
+def reflectingLat (lat):
+    latNS = N.vstack((lat[:][0], lat[:][:]))
+    latNS = N.vstack((latNS[:][:], lat[:][-1]))
+    
+    returnNS = N.hstack((latNS[0][:], latNS[:][:]))
+    return N.hstack((returnNS[:][:], latNS[-1][:]))
+    
+    
+def diffusionSim (m, n, diffusionRate, t):
+    hotSites = N.array([[2,1]])
+    coldSites = N.array([[1,2]])
+    
+    bar = initBar(m, n, hotSites, coldSites)
+    grids = N.zeros((m, n, t))
+    
+    for temp in N.arange(0, t):
+        grids[:][:][temp] = bar
+        
+        barExtended = reflectingLat(bar)
+        bar = applyDiffusionExtended(diffusionRate, barExtended)
+        bar = applyHotCold(bar, hotSites, coldSites)
+        
+        grids[:][:][temp] = bar
+    
+    return grids
